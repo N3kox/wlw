@@ -83,22 +83,23 @@ import * as echarts from "echarts";
 export default {
   data: () => ({
     fromBackend: [
-      {
-        id: 0,
-        name: "hello",
-        val: 3,
-      },
-      {
-        id: 1,
-        name: "what",
-        val: 4,
-      },
+      // {
+      //   id: 0,
+      //   name: "hello",
+      //   val: 3,
+      // },
+      // {
+      //   id: 1,
+      //   name: "what",
+      //   val: 4,
+      // },
     ],
     toBeAggregateId: -1,
     popVisible: false,
     setA: [],
     setB: [],
     sqlFunc: ["sum", "count", "average"],
+    selfAppendId: 0,
   }),
   methods: {
     searchIndexById(id, list) {
@@ -169,11 +170,27 @@ export default {
     },
     // http request
     requestSearchResult() {
+      let that = this
       let requestBody = {};
       requestBody.table_name = "test.income";
       requestBody.imension = this.parseImension();
       requestBody.query_result = this.parseQueryResult();
-      window.console.log(JSON.stringify(requestBody));
+      // window.console.log(JSON.stringify(requestBody));
+      if(requestBody.imension.length == 0){
+        this.$message.error("imension 不能为空")
+      }else if(requestBody.query_result.length == 0){
+        this.$message.error("query 不能为空")
+      }else{
+        this.$axios.post(that.patchUrl(`normal_query`), JSON.stringify(requestBody), { emulateJSON: true })
+        .then(function(res){
+          window.console.log(res)
+        }).catch(function(err){
+          window.console.log(err);
+        })
+        
+      }
+
+      
       //let that = this;
       // that.$http
       //   .get(this.patchUrl(``))
@@ -196,13 +213,14 @@ export default {
       });
     },
     init() {
+
       // 基于准备好的dom，初始化echarts实例
       let myChart = echarts.init(document.getElementById("myChart"));
       // 绘制图表
       // TODO
       myChart.setOption({
         title: {
-          text: "成绩单",
+          text: "wlw_title",
           link: "https://www.baidu.com",
           textStyle: {
             color: "red",
@@ -229,17 +247,33 @@ export default {
         ],
       });
     },
+    getSelfAppendId(){
+      let cur = this.selfAppendId
+      this.selfAppendId++
+      return cur
+    },
     loadData() {
-      // let that = this;
+      let that = this;
       this.$axios({
         method: "get",
         url: this.patchUrl("get_all_filed?table_name=test.income"),
       })
         .then(function (res) {
-          console.log(res);
+          // window.console.log(res)
+          if(res.data == null || res.statusText != "OK"){
+            that.$message.error("初始化请求数据失败,请刷新重试")
+          }else{
+            // let data = JSON.parse(res.data);
+            for(let i = 0; i < res.data.length; i++){
+              let item = {}
+              item.name = res.data[i]
+              item.id = that.getSelfAppendId()
+              that.fromBackend.push(item)
+            }
+          }
         })
         .catch(function (err) {
-          console.log(err);
+          window.console.log(err);
         });
     },
   },
