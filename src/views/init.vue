@@ -98,7 +98,7 @@ export default {
     popVisible: false,
     setA: [],
     setB: [],
-    sqlFunc: ["sum", "count", "average"],
+    sqlFunc: ["sum", "count", "avg"],
     selfAppendId: 0,
   }),
   methods: {
@@ -109,6 +109,10 @@ export default {
       return -1;
     },
     addGroupByItem(id) {
+      if(this.setA.length == 1){
+        this.$message.error("group by最多选择一个属性")
+        return;
+      }
       let index = this.searchIndexById(id, this.fromBackend);
       if (index >= 0 && this.searchIndexById(id, this.setA) == -1) {
         this.setA.push(this.fromBackend[index]);
@@ -183,24 +187,14 @@ export default {
       }else{
         this.$axios.post(that.patchUrl(`normal_query`), JSON.stringify(requestBody), { emulateJSON: true })
         .then(function(res){
-          window.console.log(res)
+          let data = res.data;
+          that.myChartConfig(data);
+          that.$message("ok")
         }).catch(function(err){
           window.console.log(err);
         })
         
       }
-
-      
-      //let that = this;
-      // that.$http
-      //   .get(this.patchUrl(``))
-      //   .then((response) => {
-      //     if ((response.data = null || response.ok == false)) {
-      //       that.$message.error("Error");
-      //     } else {
-      //       window.console.log(JSON.parse(response.bodyText));
-      //     }
-      //   });
     },
     navigateTo() {
       // let that = this
@@ -212,40 +206,87 @@ export default {
         },
       });
     },
-    init() {
-
-      // 基于准备好的dom，初始化echarts实例
+    myChartConfig(data){
+      data = JSON.parse(data)
+      window.console.log(data)
       let myChart = echarts.init(document.getElementById("myChart"));
+      let parseSeries = []
+      let parseXData = []
+      for(let k in data){
+        let found = -1;
+        for(let i = 0; i < this.sqlFunc.length; i++){
+          if(k.startsWith(this.sqlFunc[i])){
+            found = i;
+            break;
+          }
+        }
+        if(found >= 0){
+          let s = {}
+          s.name = k
+          s.type = parseSeries.length % 2 == 0 ? "line" : "bar"
+          let d = []
+          for(let j = 0; j < data[k].length; j++){
+            d.push(parseInt(data[k][j]));
+          }
+          s.data = d
+          parseSeries.push(s)
+        }else{
+          parseXData = data[k];
+        }
+      }
+      window.console.log(parseSeries)
+      window.console.log(parseXData)
+      myChart.setOption({
+          title: {
+            text: "wlw_title",
+            link: "https://www.baidu.com",
+            textStyle: {
+              color: "red",
+            }
+          },
+          xAxis: {
+            type : "category",
+            data : parseXData
+          },
+          yAxis:{
+            type:"value"
+          },
+          series: parseSeries
+        })
+    },
+    init() {
+      // 基于准备好的dom，初始化echarts实例
+      // let myChart = echarts.init(document.getElementById("myChart"));
       // 绘制图表
       // TODO
-      myChart.setOption({
-        title: {
-          text: "wlw_title",
-          link: "https://www.baidu.com",
-          textStyle: {
-            color: "red",
-          },
-        },
-        xAxis: {
-          type: "category", //类目轴
-          data: ["小明", "小红", "小王"],
-        },
-        yAxis: {
-          type: "value", // 数值轴
-        },
-        series: [
-          {
-            name: "语文",
-            type: "bar",
-            data: [100, 90, 80],
-          },
-          {
-            name: "数学",
-            type: "line",
-            data: [100, 90, 80],
-          },
-        ],
-      });
+      // myChart.setOption({
+      //   title: {
+      //     text: "wlw_title",
+      //     link: "https://www.baidu.com",
+      //     textStyle: {
+      //       color: "red",
+      //     },
+      //   },
+      //   xAxis: {
+      //     type: "category", //类目轴
+      //     data: ["小明", "小红", "小王"],
+      //   },
+      //   yAxis: {
+      //     type: "value", // 数值轴
+      //   },
+      //   series: [
+      //     {
+      //       name: "语文",
+      //       type: "bar",
+      //       data: [100, 90, 80],
+      //     },
+      //     {
+      //       name: "数学",
+      //       type: "line",
+      //       data: [100, 90, 80],
+      //     },
+      //   ],
+      // });
     },
     getSelfAppendId(){
       let cur = this.selfAppendId
@@ -274,6 +315,7 @@ export default {
         })
         .catch(function (err) {
           window.console.log(err);
+          that.$message.error("loading data error")
         });
     },
   },
